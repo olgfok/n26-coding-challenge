@@ -1,6 +1,8 @@
 package org.github.olgfok.n26.dto;
 
-
+/**
+ * Transaction request params
+ */
 public class TransactionRequest {
     /**
      * transaction amount
@@ -8,7 +10,8 @@ public class TransactionRequest {
     private double amount;
 
     /**
-     *
+     * transaction time in epoch in millis in UTC time zone (this is not current
+     * timestamp)
      */
     private long timestamp;
 
@@ -29,11 +32,6 @@ public class TransactionRequest {
     }
 
     public TransactionRequest() {
-    }
-
-    public TransactionRequest(long timestamp, double amount) {
-        this.amount = amount;
-        this.timestamp = timestamp;
     }
 
     @Override

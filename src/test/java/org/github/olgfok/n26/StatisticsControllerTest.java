@@ -9,7 +9,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.junit4.SpringRunner;
-import org.springframework.test.web.servlet.MockMvc;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.BDDMockito.given;
@@ -35,7 +34,7 @@ public class StatisticsControllerTest {
     }
 
     @Test
-    public void transactionsTest_204() throws InterruptedException {
+    public void transactionsTest_204()  {
         TransactionRequest transaction = new TransactionRequest();
         transaction.setAmount(100);
         transaction.setTimestamp(System.currentTimeMillis()-60001);
