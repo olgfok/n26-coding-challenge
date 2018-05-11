@@ -4,22 +4,21 @@ import org.github.olgfok.n26.dto.Statistics;
 import org.github.olgfok.n26.dto.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 import java.util.Enumeration;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Service for collecting statistics
  */
 @Service
 public class StatisticsService {
+
+    private static final Logger logger = LoggerFactory.getLogger(StatisticsService.class);
 
     /*  This field defines how often statistics is updated
     1000 - once per second
@@ -32,25 +31,28 @@ public class StatisticsService {
 
     private static final int TIME_LIMIT_MILLIS = 60000;
 
-    public static final int TIME_LIMIT = TIME_LIMIT_MILLIS / PRECISION;
+    public static final int TIME_LIMIT = 60;
 
-    private volatile int timer = 0;
+    private volatile int secondsCounter = 0;
 
+    /**
+     * Stores statistics for the last 60 seconds
+     * Statistics for each second correspond to a separate bucket
+     */
     private final ConcurrentHashMap<Integer, Statistics> statisticsMap = new ConcurrentHashMap<>();
-    private ScheduledExecutorService timerExecutor;
-    private static final Logger logger = LoggerFactory.getLogger(StatisticsService.class);
+
+    @Autowired
+    private Timer timer;
+
+    private StatisticsTimerTask task = new StatisticsTimerTask();
 
     @PostConstruct
     public void start() {
-        timerExecutor = Executors.newSingleThreadScheduledExecutor();
-        timerExecutor.scheduleAtFixedRate(new StatisticsTimerTask(), 0, PRECISION, TimeUnit.MILLISECONDS);
+        timer.start(task, PRECISION);
     }
 
-    @PreDestroy
-    public void shutdown() throws InterruptedException {
-        timerExecutor.shutdown();
-        timerExecutor.awaitTermination(5, TimeUnit.SECONDS);
-
+    public StatisticsTimerTask getTask() {
+        return task;
     }
 
     public void addTransaction(Transaction transaction) {
@@ -63,8 +65,7 @@ public class StatisticsService {
         if (millis >= TIME_LIMIT_MILLIS) return;
 
         synchronized (statisticsMap) {
-            int bucketIndex = (timelinePoint <= timer ? TIME_LIMIT - timer + timelinePoint + 1 :
-                    timelinePoint - timer) % TIME_LIMIT;
+            int bucketIndex = getBucketIndex(timelinePoint);
             Statistics statistics = statisticsMap.get(bucketIndex);
             if (statistics == null) {
                 statistics = new Statistics(amount, amount, amount,
@@ -81,6 +82,13 @@ public class StatisticsService {
         if (logger.isDebugEnabled())
             logger.debug("statisticsMap updated " + statisticsMap);
 
+    }
+
+    //calculating in which bucket to put current statistics
+    private int getBucketIndex(int timelinePoint) {
+        return ((timelinePoint <= secondsCounter) ?
+                (TIME_LIMIT - secondsCounter + timelinePoint + 1) :
+                (timelinePoint - secondsCounter)) % TIME_LIMIT;
     }
 
     private long calcTimeDifference(long timestamp) {
@@ -104,28 +112,36 @@ public class StatisticsService {
 
     }
 
-    private class StatisticsTimerTask extends TimerTask {
+    /**
+     * The task should be executed every second
+     * Statistics older than 60 second ago should be removed
+     */
+    public class StatisticsTimerTask extends TimerTask {
         private final Logger logger = LoggerFactory.getLogger(StatisticsTimerTask.class);
 
         @Override
         public void run() {
             synchronized (statisticsMap) {
-                int deleteIndex = TIME_LIMIT - timer;
+                int deleteIndex = TIME_LIMIT - secondsCounter;
                 Statistics remove = statisticsMap.remove(deleteIndex);
 
                 if (logger.isDebugEnabled() && remove != null) {
                     logger.debug("statisticsMap removed " + deleteIndex);
                 }
-                timer ++;
+                secondsCounter++;
 
-                if (timer == TIME_LIMIT) {
-                    timer = 0;
+                //calculating up to 60
+                if (secondsCounter == TIME_LIMIT) {
+                    secondsCounter = 0;
                 }
             }
         }
-
     }
 
+    /**
+     * Calculate statistics for the  last 60 seconds
+     * @return statistics
+     */
     public Statistics getStatistics() {
         double sum = 0;
         Double min = null;

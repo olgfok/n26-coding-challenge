@@ -2,16 +2,14 @@ package org.github.olgfok.n26;
 
 import org.github.olgfok.n26.dto.Statistics;
 import org.github.olgfok.n26.dto.Transaction;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -19,7 +17,7 @@ import java.util.concurrent.Future;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(SpringRunner.class)
-@SpringBootTest
+@ContextConfiguration(classes = TestConfig.class)
 public class StatisticsServiceTest {
 
     @Autowired
@@ -31,7 +29,7 @@ public class StatisticsServiceTest {
 
 
     @Test
-    public void testStatistics() throws InterruptedException, ExecutionException {
+    public void testStatistics() {
         final double amount = 100;
         Statistics statistics = new Statistics(amount * NUMBER_OF_TRANSACTIONS / 2, amount, amount, NUMBER_OF_TRANSACTIONS / 2);
 
@@ -55,14 +53,17 @@ public class StatisticsServiceTest {
         }
 
         //let some statistics expire
-        Thread.sleep(4000);
+        //imitate as though 4 seconds have passed
+        for (int i = 0; i < 4; i++) {
+            statisticsService.getTask().run();
+        }
         Statistics statisticsResult = statisticsService.getStatistics();
 
         assertEquals(statistics, statisticsResult);
     }
 
     @Test
-    public void testStatistics_Expiration() throws InterruptedException {
+    public void testStatistics_Expiration() {
         final double amount = 100;
         Statistics statistics = new Statistics(amount * NUMBER_OF_TRANSACTIONS, amount, amount, NUMBER_OF_TRANSACTIONS);
 
@@ -73,7 +74,6 @@ public class StatisticsServiceTest {
                     timestamp,
                     amount)));
             es.add(submit);
-
         }
 
         for (Future f : es) {
@@ -84,7 +84,11 @@ public class StatisticsServiceTest {
         Statistics result = statisticsService.getStatistics();
         assertEquals(statistics, result);
 
-        Thread.sleep(4000);
+        //let some statistics expire
+        //imitate as though 4 seconds have passed
+        for (int i = 0; i < 4; i++) {
+            statisticsService.getTask().run();
+        }
         statistics = new Statistics(0d, 0d, 0d, 0);
         Statistics resultExpired = statisticsService.getStatistics();
         assertEquals(statistics, resultExpired);

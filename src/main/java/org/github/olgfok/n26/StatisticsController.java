@@ -57,6 +57,8 @@ public class StatisticsController {
      * - min is a double specifying single lowest transaction value in the last 60 seconds
      * - count is a long specifying the total number of transactions happened in the last 60
      * seconds
+     * This endpoint have to execute in constant time and
+    memory (O(1)).
      */
     @GetMapping("/statistics")
     public Statistics statistics() {
