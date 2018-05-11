@@ -20,15 +20,6 @@ public class StatisticsService {
 
     private static final Logger logger = LoggerFactory.getLogger(StatisticsService.class);
 
-    /*  This field defines how often statistics is updated
-    1000 - once per second
-    100 - once per 100 milliseconds
-    the less this number is, the more precise is result
-    the number also influence the size of map, where we store statistics
-    with smaller number, the map is larger
-    */
-    private static final int PRECISION = 1000;
-
     private static final int TIME_LIMIT_MILLIS = 60000;
 
     public static final int TIME_LIMIT = 60;
@@ -48,7 +39,8 @@ public class StatisticsService {
 
     @PostConstruct
     public void start() {
-        timer.start(task, PRECISION);
+        //executing task every second
+        timer.start(task, 1000);
     }
 
     public StatisticsTimerTask getTask() {
@@ -169,7 +161,7 @@ public class StatisticsService {
     }
 
     private int findTimelinePoint(long secondsAgo) {
-        return (int) Math.round((double) secondsAgo / PRECISION) % (TIME_LIMIT + 1);
+        return (int) Math.round((double) secondsAgo / 1000) % (TIME_LIMIT + 1);
     }
 
 
